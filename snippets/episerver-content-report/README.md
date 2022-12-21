@@ -1,0 +1,6 @@
+- login to episerver cms
+- open chrome -> developer tools -> sources tab -> add snippet
+- import snippet
+- update `filterContent` function
+- update `mapContent` function
+- run the snippet
