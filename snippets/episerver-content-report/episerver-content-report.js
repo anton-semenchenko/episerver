@@ -13,19 +13,24 @@ async function withDelay(ms, fn) {
     return await Promise.all(result);
 }
 
+function getRequestVerificationToken() {
+    const el = document.getElementsByName('__RequestVerificationToken')[0]
+    return el && el.value;
+}
+
 async function getContent(id) {
     return await id
-        ? fetch(`/EPiServer/cms/Stores/contentdata/${id}`)
+        ? fetch(`/EPiServer/cms/Stores/contentdata/${id}`, { headers: { "requestverificationtoken": getRequestVerificationToken() }})
             .then(x => x.text())
-            .then(x => x.substring(4))
+            .then(x => x.startsWith('{}&&') ? x.substring(4) : x)
             .then(x => JSON.parse(x))
         : Promise.resolve(null);
 }
 
 async function getChildren(id) {
-    return await fetch(`/EPiServer/cms/Stores/contentstructure/?referenceId=${id}&query=getchildren&typeIdentifiers=episerver.core.pagedata`)
+    return await fetch(`/EPiServer/cms/Stores/contentstructure/?referenceId=${id}&query=getchildren&typeIdentifiers=episerver.core.pagedata`, { headers: { "requestverificationtoken": getRequestVerificationToken() }})
         .then(x => x.text())
-        .then(x => x.substring(4))
+        .then(x => x.startsWith('{}&&') ? x.substring(4) : x)
         .then(x => JSON.parse(x));
 }
 
