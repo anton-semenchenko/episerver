@@ -1,3 +1,6 @@
+const FETCH_DELAY_TIMEOUT = 5 * 1000;
+const CONTENT_FETCH_BATCH_SIZE = 50;
+
 function range(x) {
     return [...Array(x).keys()];
 }
@@ -55,7 +58,7 @@ async function getDescendants(id) {
     const children = await getChildren(id);
     const descendants = await Promise.all(
         children.map(async x => x.hasChildren
-            ? await withDelay(5000, async () => await getDescendants(x.contentLink))
+            ? await withDelay(FETCH_DELAY_TIMEOUT, async () => await getDescendants(x.contentLink))
             : []
         )
     );
@@ -70,7 +73,7 @@ async function getDescendantsAndSelf(id) {
 }
 
 async function getContentBatch(ids) {
-    return await withDelay(5000, async () => await ids.map(async x => await getContent(x)));
+    return await withDelay(FETCH_DELAY_TIMEOUT, async () => await ids.map(async x => await getContent(x)));
 }
 
 async function getContentInBatches(ids, pageSize) {
@@ -84,7 +87,7 @@ async function getContentInBatches(ids, pageSize) {
 }
 
 async function getContentByIds(ids) {
-    return await getContentInBatches(ids, 50);
+    return await getContentInBatches(ids, CONTENT_FETCH_BATCH_SIZE);
 }
 
 function groupedByType(contentItems, getGroupKey) {
