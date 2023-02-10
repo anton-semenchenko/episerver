@@ -1,6 +1,8 @@
 - login to episerver cms
 - open chrome -> developer tools -> sources tab -> add snippet
 - import snippet
-- update `filterContent` function
-- update `mapContent` function
+- update `rootContentId` - starting content id in the hierarchy
+- update `filterContent` function to filter content
+- update `mapSpecificContent` function to map additional properties, fetch referenced content, etc
 - run the snippet
+- json files will be available in opened window
