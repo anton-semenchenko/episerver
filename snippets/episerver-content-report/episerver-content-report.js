@@ -159,12 +159,6 @@ async function mapSpecificContent(x) {
     };
 }
 
-async function getImageUrl(id) {
-    return !!id
-        ? await getAbsoluteUrl((await getContent(id)).publicUrl)
-        : null;
-}
-
 function getHtml(files) {    
     return files.map(({name, numberOfItems, url}) => `
 <div>
