@@ -40,7 +40,7 @@ async function getContent(id) {
 
 async function getContentByPermanentLink(id) {
   return await id
-    ? await get(`https://eastcapital.local/EPiServer/cms/Stores/contentstructure/?query=getcontentbypermanentlink&permanentLink=${encodeURIComponent(id)}&allLanguages=true`, null)
+    ? await get(`/EPiServer/cms/Stores/contentstructure/?query=getcontentbypermanentlink&permanentLink=${encodeURIComponent(id)}&allLanguages=true`, null)
     : Promise.resolve(null);
 }
 
