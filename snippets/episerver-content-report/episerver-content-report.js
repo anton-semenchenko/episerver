@@ -182,13 +182,37 @@ async function mapSpecificContent(x) {
 }
 
 function getHtml(files) {
+  return `
+    <html>
+      <head>
+        <style>
+tr:nth-child(odd) {
+  background-color: #dddddd;
+}
+        </style
+      </head>
+      <body>
+      ${getFilesTable(files)}
+      </body>
+    </html>`;
+}
+
+function getFilesTable(files) {
+  return `
+    <table cellspacing="0" cellpadding="2">
+      ${getFilesTableRows(files)}
+    </table>`;
+}
+
+function getFilesTableRows(files) {
   return files.map(({ name, numberOfItems, url }) => `
-<div>
-    <span style="width:300px"><strong>${name}</strong></span>
-    <span style="width:100px">${numberOfItems} items</span>
-    <span><a download="${name}.json" href="${url}">Download</a></span>
-</div>
-    `);
+    <tr>
+      <td style="width:300px"><strong>${name}</strong></td>
+      <td style="width:100px">${numberOfItems} items</td>
+      <td style="width:100px"><a href="${url}">Open</a></td>
+      <td style="width:100px"><a download="${name}.json" href="${url}">Download</a></td>
+    </tr>
+  `).join('');
 }
 
 (async function () {
@@ -233,6 +257,6 @@ function getHtml(files) {
     };
   }));
 
-  const reportBlob = new Blob(getHtml(files), { type: "text/html" });
+  const reportBlob = new Blob([getHtml(files)], { type: "text/html" });
   window.open(URL.createObjectURL(reportBlob));
 })();
