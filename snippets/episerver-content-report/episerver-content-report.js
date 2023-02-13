@@ -157,6 +157,7 @@ async function mapGeneralContent(x) {
     // previewUrl: getAbsoluteUrl(x.previewUrl),
     publicUrl: getAbsoluteUrl(x.publicUrl),
     languageId: x.currentLanguageBranch?.languageId,
+    parentLink: x.parentLink,
     contentLink: x.contentLink,
     contentGuid: x.contentGuid,
     permanentLink: x.permanentLink,
