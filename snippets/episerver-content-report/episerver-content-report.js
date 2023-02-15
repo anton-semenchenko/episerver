@@ -1,4 +1,4 @@
-const FETCH_DELAY_TIMEOUT = 5 * 1000;
+const FETCH_DELAY_TIMEOUT = 0 * 1000;
 const CONTENT_FETCH_BATCH_SIZE = 50;
 
 function range(x) {
@@ -14,6 +14,28 @@ async function delay(x) {
 async function withDelay(ms, fn) {
   const [result, delayId] = await Promise.all([fn(), delay(ms)]);
   return await Promise.all(result);
+}
+
+function groupBy(contentItems, keySelector) {
+  return contentItems
+    .reduce(
+      (result, x) => keySelector(x) in result
+        ? { ...result, ...{ [keySelector(x)]: result[keySelector(x)].concat(x) } }
+        : { ...result, ...{ [keySelector(x)]: [x] } },
+      {});
+}
+
+function toDictionary(contentItems, keySelector) {
+  return contentItems
+    .reduce(
+      (result, x) => {
+        const key = keySelector(x)
+        if (key in result) {
+          throw Error(`Key '${key} is in dictionary'`)
+        }
+        return { ...result, ...{ [key]: x } };
+      },
+      {});
 }
 
 function getRequestVerificationToken() {
@@ -47,6 +69,13 @@ async function getContentByPermanentLink(id) {
 async function getChildren(id) {
   return await id
     ? await get(`/EPiServer/cms/Stores/contentstructure/?referenceId=${id}&query=getchildren&typeIdentifiers=episerver.core.icontentdata&&allLanguages=true`, [])
+    : Promise.resolve([]);
+}
+
+
+async function getReferencedContent(id) {
+  return await id
+    ? await get(`/EPiServer/cms/Stores/referenced-content/?ids=${id}`, [])
     : Promise.resolve([]);
 }
 
@@ -94,27 +123,28 @@ async function getContentBatch(ids) {
   return await withDelay(FETCH_DELAY_TIMEOUT, async () => await ids.map(async x => await getContent(x)));
 }
 
-async function getContentInBatches(ids, pageSize) {
+async function getReferencedContentBatch(ids) {
+  return await withDelay(FETCH_DELAY_TIMEOUT, async () => await ids.map(async x => await getReferencedContent(x)));
+}
+
+async function getInBatches(pageSize, ids, fn) {
   const total = ids.length;
   const totalPages = Math.floor(total / pageSize) + ((total % pageSize) > 0 ? 1 : 0);
 
   return range(totalPages)
     .reduce(async (result, page) =>
-      (await result).concat(await getContentBatch(ids.slice(page * pageSize, page * pageSize + pageSize)))
-      , []);
+      (await result).concat(await fn(ids.slice(page * pageSize, page * pageSize + pageSize))),
+      []
+    );
 }
 
 async function getContentByIds(ids) {
-  return await getContentInBatches(ids, CONTENT_FETCH_BATCH_SIZE);
+  return await getInBatches(CONTENT_FETCH_BATCH_SIZE, ids, getContentBatch);
 }
 
-function groupBy(contentItems, getGroupKey) {
-  return contentItems
-    .reduce(
-      (result, x) => getGroupKey(x) in result
-        ? { ...result, ...{ [getGroupKey(x)]: result[getGroupKey(x)].concat(x) } }
-        : { ...result, ...{ [getGroupKey(x)]: [x] } },
-      {});
+async function getReferencedContentByIds(ids) {
+  const items = await getInBatches(CONTENT_FETCH_BATCH_SIZE, ids, getReferencedContentBatch);
+  return items.flatMap(x => x);
 }
 
 function filterContent(x) {
@@ -146,8 +176,8 @@ function getStatus(id) {
   return statuses[id] ?? id;
 }
 
-async function mapGeneralContent(x) {
-  return {
+function createMapGeneralContent(referenced) {
+  return x => ({
     contentTypeName: x.contentTypeName,
     contentTypeID: x.contentTypeID,
     status: getStatus(x.status),
@@ -162,6 +192,7 @@ async function mapGeneralContent(x) {
     contentGuid: x.contentGuid,
     permanentLink: x.permanentLink,
     typeIdentifier: x.typeIdentifier,
+    referenced: referenced[x.contentLink]?.references,
     uri: x.uri,
     created: x.created,
     createdBy: x.createdBy,
@@ -172,7 +203,7 @@ async function mapGeneralContent(x) {
     deleted: x.deleted,
     deletedBy: x.deletedBy,
     ...getProperties(x),
-  };
+  });
 }
 
 async function mapSpecificContent(x) {
@@ -228,6 +259,12 @@ function getFilesTableRows(files) {
     .map(x => x.contentLink);
   console.log(`Ids: ${ids.length}`, ids);
 
+  const referenced = await getReferencedContentByIds(ids);
+  // console.log(`Referenced: ${referenced.length}`, referenced);
+
+  const referencedDict = toDictionary(referenced, x => x.contentLink);
+  // console.log(`referencedDict`, referencedDict);
+
   const contentItems = (await getContentByIds(ids)).filter(x => !!x);
   console.log(`Fetched: ${contentItems.length} content items`, contentItems);
 
@@ -238,8 +275,10 @@ function getFilesTableRows(files) {
   sorted.sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0);
   // console.log('sorted', sorted);
 
-  // const dict = groupBy(contentItems, x => x.permanentLink);    
+  // const permanentLinks = groupBy(contentItems, x => x.permanentLink);
   // console.log('permanentLinks', permanentLinks);
+
+  const mapGeneralContent = await createMapGeneralContent(referencedDict);
 
   const files = await Promise.all(sorted.map(async ([name, items]) => {
     const generalContent = await Promise.all(items.map(mapGeneralContent));
